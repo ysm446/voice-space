@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 # HF_HOME must be set before any HuggingFace/transformers imports
 os.environ["HF_HOME"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
@@ -263,17 +263,29 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
             )
             with gr.Row():
                 with gr.Column():
+                    # -- Speaker management --
+                    with gr.Accordion("話者", open=False):
+                        # -- Registered voice loader --
+                        with gr.Group():
+                            gr.Markdown("#### 登録済みの声")
+                            with gr.Row():
+                                vc_voice_dd = gr.Dropdown(
+                                    choices=_list_voices(),
+                                    label="声を選択",
+                                    scale=3,
+                                )
+                                vc_load_btn = gr.Button("読み込み", scale=1)
 
-                    # -- Registered voice loader --
-                    with gr.Group():
-                        gr.Markdown("#### 登録済みの声")
-                        with gr.Row():
-                            vc_voice_dd = gr.Dropdown(
-                                choices=_list_voices(),
-                                label="声を選択",
-                                scale=3,
-                            )
-                            vc_load_btn = gr.Button("読み込む", scale=1)
+                        # -- Voice registration --
+                        with gr.Group():
+                            gr.Markdown("#### この参照音声を登録")
+                            with gr.Row():
+                                vc_voice_name = gr.Textbox(
+                                    label="登録名",
+                                    placeholder="例: MyVoice",
+                                    scale=3,
+                                )
+                                vc_save_btn = gr.Button("登録", scale=1)
 
                     # -- Inputs --
                     vc_text = gr.Textbox(
@@ -295,17 +307,6 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
                         placeholder="参照音声で話されている内容を正確に入力...",
                     )
                     vc_btn = gr.Button("生成", variant="primary")
-
-                    # -- Voice registration --
-                    with gr.Group():
-                        gr.Markdown("#### この参照音声を登録")
-                        with gr.Row():
-                            vc_voice_name = gr.Textbox(
-                                label="登録名",
-                                placeholder="例: MyVoice",
-                                scale=3,
-                            )
-                            vc_save_btn = gr.Button("登録", scale=1)
 
                 with gr.Column():
                     vc_audio = gr.Audio(label="出力音声")
@@ -330,3 +331,4 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=7860, share=False,
                 allowed_paths=[str(OUTPUTS_DIR)])
+
