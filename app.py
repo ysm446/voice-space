@@ -3,6 +3,7 @@ import os
 # HF_HOME must be set before any HuggingFace/transformers imports
 os.environ["HF_HOME"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
+import tempfile
 import time
 import numpy as np
 import torch
@@ -26,6 +27,29 @@ LANGUAGES = [
 ]
 
 _models: dict = {}
+
+
+def _to_mp3(data: np.ndarray, sr: int) -> str:
+    import lameenc
+    # Convert float32 [-1, 1] → int16
+    if data.dtype.kind == "f":
+        data = np.clip(data, -1.0, 1.0)
+        data = (data * 32767).astype(np.int16)
+    elif data.dtype != np.int16:
+        data = data.astype(np.int16)
+    # Downmix to mono if stereo
+    if data.ndim > 1:
+        data = data.mean(axis=1).astype(np.int16)
+    encoder = lameenc.Encoder()
+    encoder.set_bit_rate(192)
+    encoder.set_in_sample_rate(sr)
+    encoder.set_channels(1)
+    encoder.set_quality(2)  # 2 = highest quality
+    mp3_bytes = encoder.encode(data.tobytes()) + encoder.flush()
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+    tmp.write(mp3_bytes)
+    tmp.close()
+    return tmp.name
 
 
 def get_model(key: str) -> Qwen3TTSModel:
@@ -56,7 +80,7 @@ def generate_custom(text: str, language: str, speaker: str, instruct: str):
         instruct=instruct,
     )
     elapsed = time.perf_counter() - t0
-    return (sr, wavs[0]), f"{elapsed:.1f} 秒"
+    return _to_mp3(wavs[0], sr), f"{elapsed:.1f} 秒"
 
 
 def generate_design(text: str, language: str, instruct: str):
@@ -72,7 +96,7 @@ def generate_design(text: str, language: str, instruct: str):
         instruct=instruct,
     )
     elapsed = time.perf_counter() - t0
-    return (sr, wavs[0]), f"{elapsed:.1f} 秒"
+    return _to_mp3(wavs[0], sr), f"{elapsed:.1f} 秒"
 
 
 def generate_clone(text: str, language: str, ref_audio, ref_text: str):
@@ -98,7 +122,7 @@ def generate_clone(text: str, language: str, ref_audio, ref_text: str):
         ref_text=ref_text,
     )
     elapsed = time.perf_counter() - t0
-    return (sr, wavs[0]), f"{elapsed:.1f} 秒"
+    return _to_mp3(wavs[0], sr), f"{elapsed:.1f} 秒"
 
 
 with gr.Blocks(title="Qwen3-TTS Demo") as demo:
@@ -134,7 +158,7 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
                     )
                     cv_btn = gr.Button("生成", variant="primary")
                 with gr.Column():
-                    cv_audio = gr.Audio(label="出力音声", type="numpy")
+                    cv_audio = gr.Audio(label="出力音声")
                     cv_time = gr.Textbox(label="生成時間", interactive=False)
 
             cv_btn.click(
@@ -163,7 +187,7 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
                     )
                     vd_btn = gr.Button("生成", variant="primary")
                 with gr.Column():
-                    vd_audio = gr.Audio(label="出力音声", type="numpy")
+                    vd_audio = gr.Audio(label="出力音声")
                     vd_time = gr.Textbox(label="生成時間", interactive=False)
 
             vd_btn.click(
@@ -200,7 +224,7 @@ with gr.Blocks(title="Qwen3-TTS Demo") as demo:
                     )
                     vc_btn = gr.Button("生成", variant="primary")
                 with gr.Column():
-                    vc_audio = gr.Audio(label="出力音声", type="numpy")
+                    vc_audio = gr.Audio(label="出力音声")
                     vc_time = gr.Textbox(label="生成時間", interactive=False)
 
             vc_btn.click(

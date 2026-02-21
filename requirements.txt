@@ -3,3 +3,4 @@ qwen-tts
 torch
 soundfile
 numpy
+lameenc
